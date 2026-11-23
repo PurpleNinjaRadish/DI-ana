@@ -1,6 +1,6 @@
 {
  "odinVersion": "0.10.0-alpha",
- "odinCommit": "07ebf3c46ca32c9e6dd6608ea3c255b09af49528",
+ "odinCommit": "198d36ef13cdb36339abbaec1eb96a706c4c742c",
  "copied": "2026-11-23",
  "files": {
   "ai.js": {
@@ -65,7 +65,7 @@
   },
   "sheets.js": {
    "from": "sheets.js",
-   "sha256": "34aa87a245b7f7266b6a8c45ea82cde464bd57e5632aa48079d1f7ba1f39b743"
+   "sha256": "7e1a76a9c178af592e67329eda4da3357c45726dfd4ddbb15459bdf6ee071092"
   },
   "sheets_math.js": {
    "from": "sheets_math.js",

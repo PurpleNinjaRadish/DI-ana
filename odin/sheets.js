@@ -198,7 +198,8 @@ function shBuildSetSheet(rec) {
   }
   const name = String(C.title || "").trim() || "Sheet", what = SH_SET_KIND[C.setKind] || "Sheet";
   const title = C.keySheet ? `Answer key · ${name}` : C.setKind === "worksheet" ? `Answers · ${name}` : `${what} · ${name}`;
-  const directions = C.keySheet ? "Teacher: fill in the right answer to each question, then scan this sheet with the students' sheets. Keep it away from students."
+  const directions = C.keySheet ? (items.every(it => it.key >= 0) ? "The right answers are filled in. Keep this sheet away from students. Odin has the key, so scanning it is up to you."
+      : "Teacher: fill in the right answer to each question, then scan this sheet with the students' sheets. Keep it away from students.")
     : C.setKind === "worksheet" ? "Answer the worksheet's questions here: fill in one bubble for each question. Use a pencil." : "Fill in one bubble for each question. Use a pencil.";
   const spec = { id: rec.id, code: rec.code, subject: rec.subject || C.subject || "", skill: rec.skill || "", skillName: name, week: rec.week, kind: "set", part: 0, band: rec.band | 0, level: rec.level,
     title, directions, template, readAloud: false, passage, items, total: items.length, key: keyStr, keyKnown: items.every(it => it.key >= 0), hints: C.setKind === "practice" && items.some(it => it.hint), learn: null,
