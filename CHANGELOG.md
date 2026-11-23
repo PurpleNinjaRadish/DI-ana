@@ -1,5 +1,16 @@
 # DI-ana changes
 
+## 0.1.1-alpha · November 2026
+
+- **A walkthrough.** Seven short steps, each with a picture: what DI-ana does, printing the sheets in Odin, filling in the
+  bubbles, scanning the stack, checking flagged answers, sending to Odin, and using it at school. It opens by itself the
+  first time DI-ana opens (the Android app remembers that it was seen; a browser keeps only that in its own storage) and
+  from the **Walkthrough** button. Back, Next, the arrow keys and Escape work; each step's heading gets the focus.
+- **The description** says what the name means, Diagnostic testing and Intervention automatic analysis, in the app's
+  header and setup screen, the page's title, the web copy's install name and the README.
+- README: the walkthrough with pictures from the demo (`tools/walkthrough_pictures.py`).
+- Tests: the walkthrough opens once, steps through, and stays closed after Done, in the page tests and the emulator check.
+
 ## 0.1.0-alpha · November 2026
 
 The first DI-ana: an Android app and a web copy that read Odin's paper sheets. Needs Odin 0.9.5 or newer.

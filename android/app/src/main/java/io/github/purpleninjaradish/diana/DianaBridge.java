@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
  * The sign-in's session cookie is kept here, in memory only: it is never written down, and it is gone when DI-ana closes.
  * The password is sent to Odin once and not kept.
  *
- * Messages (JSON): hello, signin {password}, get {path}, post {path, body}, signout, buzz {ms}, printpdf {name, b64}, setup.
+ * Messages (JSON): hello, signin {password}, get {path}, post {path, body}, signout, buzz {ms}, printpdf {name, b64}, toured, setup.
  * Each gets a reply {t: "reply", id, ...}. When the app leaves the screen the page hears {t: "app", ev: "hidden"}.
  */
 final class DianaBridge implements WebViewCompat.WebMessageListener {
@@ -124,7 +124,7 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
         switch (m.optString("t")) {
             case "hello":
                 send(o("t", "reply", "id", id, "app", BuildConfig.VERSION_NAME, "sdk", Build.VERSION.SDK_INT,
-                        "mode", server ? "server" : "demo", "server", server ? target : ""));
+                        "mode", server ? "server" : "demo", "server", server ? target : "", "toured", act.toured()));
                 break;
             case "signin":
                 if (!server) {
@@ -182,6 +182,10 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
                 send(o("t", "reply", "id", id, "ok", ok));
                 break;
             }
+            case "toured":   // the walkthrough was seen: it doesn't open by itself again
+                act.markToured();
+                send(o("t", "reply", "id", id, "ok", true));
+                break;
             case "setup":
                 act.showSetup(null);
                 send(o("t", "reply", "id", id, "ok", true));

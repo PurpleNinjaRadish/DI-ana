@@ -67,7 +67,7 @@ import java.util.Locale;
 public class MainActivity extends Activity {
     static final String TAG = "DIana";
     private static final int REQ_FILES = 2, REQ_CAMERA = 3;
-    private static final String PREFS = "diana", KEY_URL = "url";
+    private static final String PREFS = "diana", KEY_URL = "url", KEY_TOURED = "toured";
     static final String DEMO = "demo";
     static final String PAGE = "https://" + WebViewAssetLoader.DEFAULT_DOMAIN + "/assets/web/index.html";
     static final String PAGE_ORIGIN = "https://" + WebViewAssetLoader.DEFAULT_DOMAIN;
@@ -375,7 +375,8 @@ public class MainActivity extends Activity {
         col.setPadding(dp(24), dp(40), dp(24), dp(24));
         setup.addView(col, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         add(col, text("DI-ana", 30, true, INK), 0);
-        add(col, text("Reads Odin's paper pre-checks, practice sheets and post-checks · Project Cerberus", 15, false, MUTED), 4);
+        add(col, text("Diagnostic testing and Intervention automatic analysis", 16, true, MUTED), 4);
+        add(col, text("Reads Odin's paper pre-checks, practice sheets and post-checks with the camera, and sends only the answers to Odin · Project Cerberus", 15, false, MUTED), 4);
         add(col, text("Odin's address on the school network", 16, true, INK), 32);
         urlBox = new EditText(this);
         urlBox.setHint("https://odin.your-school.org");
@@ -426,6 +427,15 @@ public class MainActivity extends Activity {
         String base = scheme + "://" + p.getEncodedAuthority() + path;
         prefs().edit().putString(KEY_URL, base).apply();
         open(base);
+    }
+
+    /** Whether the walkthrough was seen (the page opens it by itself the first time). Nothing about students. */
+    boolean toured() {
+        return prefs().getBoolean(KEY_TOURED, false);
+    }
+
+    void markToured() {
+        prefs().edit().putBoolean(KEY_TOURED, true).apply();
     }
 
     private SharedPreferences prefs() {

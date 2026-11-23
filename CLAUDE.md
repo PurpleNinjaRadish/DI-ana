@@ -1,6 +1,6 @@
 # DI-ana: notes for working on this repository
 
-DI-ana is the phone app that reads Odin's paper sheets (pre-checks, practice 1 and 2, post-checks) and sends the answers
+DI-ana (Diagnostic testing and Intervention automatic analysis) is the phone app that reads Odin's paper sheets (pre-checks, practice 1 and 2, post-checks) and sends the answers
 to Odin. Odin is in github.com/PurpleNinjaRadish/project-cerabus (the Project Cerberus server and page).
 
 ## DI-ana and Odin change together

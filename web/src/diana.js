@@ -45,7 +45,8 @@
     mode: "demo", server: "", appVersion: "", signedIn: false, needSignIn: false, loading: false, error: "",
     data: null, byId: new Map(), today: "", names: false, msg: "", msgKind: "",
     reads: [], sending: false, leaving: false,
-    demo: { cls: null, subj: "math", which: "pre" }
+    demo: { cls: null, subj: "math", which: "pre" },
+    tour: { open: false, step: 0, focus: false }
   };
   function useData(d) {
     S.data = d; S.byId = new Map(); S.today = d.today || new Date().toISOString().slice(0, 10);
@@ -375,16 +376,19 @@
     else if (S.loading && !S.data) body = `<div class="panel"><p>Loading this week's sheets from Odin…</p></div>`;
     else body = scanPanel(counts, demo, ready) + (demo ? demoPanel() : "");
     root.innerHTML = `<header class="top"><div class="wrap">
-        <div class="brand">${LOGO}<div><h1>DI-ana</h1><div class="sub">Reads Odin's paper sheets</div></div></div>
+        <div class="brand">${LOGO}<div><h1>DI-ana</h1><div class="sub">Diagnostic testing and Intervention automatic analysis</div></div></div>
         ${demo ? `<span class="chip demo">Demo · invented students</span>` : `<span class="chip">${esc(S.server || "Odin")}${S.signedIn ? " · signed in" : ""}</span>`}
+        <button class="btn ghost sm" data-a="tour" aria-haspopup="dialog">Walkthrough</button>
         <button class="switch" role="switch" aria-checked="${S.names}" data-a="names"><span class="k"></span>Names</button>
       </div></header>
+      <p class="wrap tagline small muted">Reads Odin's paper pre-checks, practice sheets and post-checks with the camera, and sends only the answers to Odin.</p>
       <main class="wrap">
         ${S.error ? `<div class="notice bad" role="alert"><b>${esc(S.error)}</b></div>` : ""}
         ${body}
         <p class="privacy">DI-ana reads each picture on this ${BRIDGE ? "phone" : "device"}. Pictures are never saved or sent: only the answers go to Odin, and only when you press Send. Nothing stays on the ${BRIDGE ? "phone" : "device"}: closing DI-ana clears this list.${demo ? " Every student in the demo is invented." : ""}</p>
         <p class="small muted">DI-ana ${esc(DIANA.version)}${S.appVersion ? ` · Android app ${esc(S.appVersion)}` : ""} · reads sheets with Odin ${esc(DIANA.odin.odinVersion)}'s scanner${S.data && S.data.version && !demo ? ` · this Odin is ${esc(S.data.version)}` : ""}${BRIDGE ? ` · <button class="btn ghost sm" data-a="setup">Change Odin's address or the demo</button>` : ""}</p>
-      </main>`;
+      </main>${S.tour.open ? tourHTML() : ""}`;
+    if (S.tour.open && S.tour.focus) { S.tour.focus = false; const h = $("#tour-h"); if (h) h.focus(); }
   }
   function signInPanel() {
     return `<form class="panel" id="signin" autocomplete="off">
@@ -450,12 +454,91 @@
     </section>`;
   }
 
+  // ---------- the walkthrough: what DI-ana does and how to use it, step by step ----------
+  // It opens by itself the first time DI-ana opens (the Android app remembers that it was seen; a browser remembers it in
+  // its own storage, which holds nothing else), and from the Walkthrough button.
+  const TOUR_KEY = "diana.walkthroughSeen";
+  const SHEET = (x, y, w, h) => `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="#fff" stroke="var(--line)"/>${[[x + 3, y + 3], [x + w - 9, y + 3], [x + 3, y + h - 9], [x + w - 9, y + h - 9]].map(([a, b]) => `<rect x="${a}" y="${b}" width="6" height="6" fill="#1B1726"/>`).join("")}${[0.36, 0.52, 0.68].map(f => [0.3, 0.45, 0.6, 0.75].map((g, k) => `<circle cx="${x + w * g}" cy="${y + h * f}" r="${Math.max(2, w * 0.045)}" ${k === (Math.round(f * 10) % 4) ? 'fill="var(--accent)"' : 'fill="none" stroke="#888" stroke-width="1"'}/>`).join("")).join("")}</g>`;
+  const ODIN = (x, y) => `<g><rect x="${x}" y="${y}" width="64" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="${x + 32}" y="${y + 27}" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent)" font-family="var(--f-display)">Odin</text></g>`;
+  const ARROW = (x1, x2, y) => `<path d="M${x1} ${y}H${x2 - 6}" stroke="var(--muted)" stroke-width="2"/><path d="M${x2 - 8} ${y - 5}L${x2} ${y}L${x2 - 8} ${y + 5}" fill="none" stroke="var(--muted)" stroke-width="2"/>`;
+  const PHONE = (x, y, inner) => `<g><rect x="${x}" y="${y}" width="52" height="96" rx="9" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><rect x="${x + 5}" y="${y + 10}" width="42" height="72" rx="2" fill="var(--sunk)"/>${inner || ""}</g>`;
+  const ART = {
+    about: `${PHONE(18, 12, SHEET(28, 28, 32, 44))}${ARROW(80, 150, 60)}<text x="115" y="50" text-anchor="middle" font-size="10" fill="var(--muted)">answers only</text>${ODIN(156, 38)}`,
+    print: `<rect x="70" y="40" width="100" height="44" rx="8" fill="var(--sunk)" stroke="var(--ink)" stroke-width="2"/><rect x="84" y="28" width="72" height="14" rx="2" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/>${SHEET(92, 70, 56, 46)}<circle cx="158" cy="52" r="3" fill="var(--accent)"/>`,
+    bubbles: `${[0, 1, 2].map(r => `<text x="44" y="${40 + r * 28}" font-size="12" font-weight="700" fill="var(--ink)">${r + 1}</text>${[0, 1, 2, 3].map(k => `<circle cx="${76 + k * 30}" cy="${36 + r * 28}" r="9" ${k === [2, 0, 3][r] ? 'fill="var(--ink)"' : 'fill="none" stroke="var(--muted)" stroke-width="1.5"'}/><text x="${76 + k * 30}" y="${40 + r * 28}" text-anchor="middle" font-size="9" fill="#b4b4b4">${"ABCD"[k]}</text>`).join("")}`).join("")}<path d="M196 96 L214 30 L222 33 L204 99 Z" fill="var(--warn)" stroke="var(--ink)" stroke-width="1.5"/><path d="M196 96 L204 99 L198 108 Z" fill="var(--ink)"/>`,
+    scan: `${SHEET(30, 40, 70, 74)}${PHONE(118, 10, SHEET(128, 30, 32, 40))}<path d="M128 30v-5h5M160 30v-5h-5M128 70v5h5M160 70v5h-5" stroke="var(--accent)" stroke-width="2" fill="none"/><path d="M182 20q8 8 0 16M188 14q14 14 0 28" stroke="var(--accent)" stroke-width="2" fill="none"/><text x="65" y="32" text-anchor="middle" font-size="10" fill="var(--muted)">all four corners in view</text>`,
+    check: `<rect x="22" y="18" width="196" height="84" rx="10" fill="var(--surface)" stroke="var(--warn)" stroke-width="2"/><text x="36" y="38" font-size="11" font-weight="700" fill="var(--ink)">Question 3 · Two bubbles filled</text>${[0, 1, 2, 3].map(k => `<circle cx="${52 + k * 30}" cy="56" r="8" ${k === 1 || k === 2 ? 'fill="#555"' : 'fill="none" stroke="#999" stroke-width="1.5"'}/>`).join("")}${["A", "B", "C", "D"].map((l, k) => `<rect x="${36 + k * 36}" y="72" width="30" height="20" rx="5" fill="${k === 2 ? "var(--accent)" : "var(--surface)"}" stroke="var(--line)"/><text x="${51 + k * 36}" y="86" text-anchor="middle" font-size="11" font-weight="700" fill="${k === 2 ? "var(--accent-ink)" : "var(--ink)"}">${l}</text>`).join("")}`,
+    send: `${[0, 1, 2].map(k => `<rect x="${24 + k * 6}" y="${22 + k * 8}" width="64" height="74" rx="3" fill="var(--surface)" stroke="var(--line)"/>`).join("")}<text x="68" y="82" text-anchor="middle" font-size="16" font-weight="700" fill="var(--ok)">6/8</text>${ARROW(104, 146, 62)}${ODIN(152, 40)}<path d="M174 96h20" stroke="var(--ok)" stroke-width="3"/><path d="M178 92l4 4l8-8" stroke="var(--ok)" stroke-width="2" fill="none"/>`,
+    school: `${PHONE(30, 12, `<text x="56" y="44" text-anchor="middle" font-size="7" fill="var(--muted)">https://</text><rect x="38" y="48" width="36" height="8" rx="2" fill="var(--surface)" stroke="var(--line)"/><rect x="38" y="62" width="36" height="9" rx="3" fill="var(--accent)"/>`)}${ARROW(98, 150, 60)}<text x="124" y="50" text-anchor="middle" font-size="10" fill="var(--muted)">school Wi-Fi</text>${ODIN(156, 38)}`
+  };
+  function tourSteps() {
+    const demo = S.mode === "demo";
+    return [
+      { art: ART.about, h: "What DI-ana does", p: [
+        "DI-ana stands for Diagnostic testing and Intervention automatic analysis. It reads the paper sheets Odin prints for each student: the pre-check, practice 1 and 2, and the post-check.",
+        "It sends only the answers to Odin. Odin scores them with its own answer keys, and the pre- and post-check scores show on Odin's Weekly focus and Progress tabs." ] },
+      { art: ART.print, h: "1. Print the sheets in Odin", p: [
+        "In Odin, open the Practice tab. Under View, print or save as PDF, choose Pre-checks, Practice packets or Post-checks, then Print (or Save as PDF).",
+        "Print on US Letter at 100% (actual size). Each sheet has its own number in the black squares at the top, so DI-ana knows whose sheet it is and which one." ],
+        note: demo ? "In this demo, use Save sample sheets as PDF (under Try it with the demo) instead: Odin's own demo numbers its sheets differently." : "" },
+      { art: ART.bubbles, h: "2. Students fill in the bubbles", p: [
+        "One bubble per question, filled in completely with a pencil. To change an answer, erase it cleanly.",
+        "Nobody writes on the four black corner squares or the black squares at the top: that's how DI-ana finds the sheet and reads its number." ] },
+      { art: ART.scan, h: "3. Scan the stack", p: [
+        "Tap Scan with the camera. Hold the phone over a sheet so all four black corner squares show on the screen.",
+        "Hold still until it beeps, then put the next sheet down. Any order works, and upside down or a little crooked is fine. Good light helps: tap Light if the room is dark.",
+        "Already have photos, or a scanner's PDF? Tap Choose photos or scans." ] },
+      { art: ART.check, h: "4. Check what DI-ana asks about", p: [
+        "When a mark is light, two bubbles are filled, or an answer looks erased, DI-ana shows that question's bubbles with A–D buttons. Tap what the student meant, or Blank.",
+        "If Odin already has a result for a sheet, DI-ana asks before replacing it." ] },
+      { art: ART.send, h: demo ? "5. Save (in the demo) or send to Odin" : "5. Send to Odin", p: [
+        demo ? "At school, Send puts the answers into Odin. In this demo it's called Save, and nothing leaves the page." : "Press Send. Only the answers go to Odin, and Odin scores them.",
+        "DI-ana keeps nothing: pictures are never saved or sent, and closing DI-ana clears its list. So send before you close it." ] },
+      { art: ART.school, h: "At school", p: [
+        BRIDGE ? "Tap Change Odin's address at the bottom of the page and type the address teachers use for Odin (it starts with https://), then sign in with Odin's password. The phone has to be on the school network."
+          : "Use the DI-ana Android app: type the address teachers use for Odin (it starts with https://) and sign in with Odin's password. The phone has to be on the school network.",
+        "DI-ana needs Odin 0.9.5 or newer. Use real student information only on the school's Project Cerberus server, with the school's written approval." ] }
+    ];
+  }
+  const nb = t => esc(t).replace(/DI-ana/g, '<span class="nw">DI-ana</span>');   // never "DI-" at a line's end
+  function tourHTML() {
+    const steps = tourSteps(), k = Math.min(S.tour.step, steps.length - 1), st = steps[k], last = k === steps.length - 1;
+    return `<div class="tour" id="tour" role="dialog" aria-modal="true" aria-labelledby="tour-h"><div class="tour-card">
+      <svg class="tour-art" viewBox="0 0 240 120" role="img" aria-label="">${st.art}</svg>
+      <p class="tour-n small muted">Walkthrough · ${k + 1} of ${steps.length}</p>
+      <h2 id="tour-h" tabindex="-1">${nb(st.h)}</h2>
+      ${st.p.map(t => `<p>${nb(t)}</p>`).join("")}${st.note ? `<p class="small notice">${nb(st.note)}</p>` : ""}
+      <div class="tour-dots" aria-hidden="true">${steps.map((_, i) => `<i class="${i === k ? "on" : ""}"></i>`).join("")}</div>
+      <div class="row tour-nav">
+        ${k ? `<button class="btn ghost" data-a="tourback">Back</button>` : `<button class="btn ghost" data-a="tourdone">Skip</button>`}
+        ${last ? (S.mode === "demo" && S.data ? `<button class="btn ghost" data-a="tourtry">Try pretend pictures</button>` : "") + `<button class="btn" data-a="tourscan">Start scanning</button><button class="btn ghost" data-a="tourdone">Done</button>` : `<button class="btn" data-a="tournext">Next</button>`}
+      </div></div></div>`;
+  }
+  function tourOpen(step) { S.tour = { open: true, step: step || 0, focus: true }; render(); }
+  function tourClose() { S.tour.open = false; try { localStorage.setItem(TOUR_KEY, "1"); } catch (e) {} if (BRIDGE) ask("toured", {}, 2000); render(); }
+  function tourSeen(hello) {
+    if (hello && typeof hello.toured === "boolean") return hello.toured;
+    try { return localStorage.getItem(TOUR_KEY) === "1"; } catch (e) { return false; }
+  }
+  document.addEventListener("keydown", e => {
+    if (!S.tour.open) return;
+    if (e.key === "Escape") tourClose();
+    else if (e.key === "ArrowRight" && S.tour.step < tourSteps().length - 1) { S.tour.step++; S.tour.focus = true; render(); }
+    else if (e.key === "ArrowLeft" && S.tour.step > 0) { S.tour.step--; S.tour.focus = true; render(); }
+  });
+
   // ---------- taps ----------
   document.addEventListener("click", e => {
     const t = e.target.closest("[data-a]");
     if (!t) return;
     const a = t.dataset.a, x = t.dataset.k ? S.reads.find(y => y.key === Number(t.dataset.k)) : null;
-    if (a === "camera") camStart();
+    if (a === "tour") tourOpen(0);
+    else if (a === "tournext") { S.tour.step++; S.tour.focus = true; render(); }
+    else if (a === "tourback") { S.tour.step = Math.max(0, S.tour.step - 1); S.tour.focus = true; render(); }
+    else if (a === "tourdone") tourClose();
+    else if (a === "tourtry") { tourClose(); pretend(); }
+    else if (a === "tourscan") { tourClose(); if (S.data) camStart(); }
+    else if (a === "camera") camStart();
     else if (a === "camclose") camStop();
     else if (a === "torch") torch();
     else if (a === "names") { S.names = !S.names; render(); }
@@ -503,6 +586,7 @@
   });
   // Android's back button: close the camera first; and don't lose sheets that weren't sent without asking.
   window.__dianaBack = () => {
+    if (S.tour.open) { tourClose(); return "stay"; }
     if (CAM.on) { camStop(); return "stay"; }
     const waiting = S.reads.filter(x => x.ok && x.status !== "sent").length;
     if (waiting && !S.leaving) { S.leaving = true; say(`${plural(waiting, "sheet")} ${waiting === 1 ? "isn't" : "aren't"} ${S.mode === "demo" ? "saved" : "sent to Odin"} yet. Press Back again to leave without them, or send them first.`, "bad"); render(); setTimeout(() => { S.leaving = false; }, 6000); return "stay"; }
@@ -510,7 +594,8 @@
   };
   // for the tests: what was read, and a way to read a picture without the camera
   window.__diana = {
-    state: () => ({ mode: S.mode, signedIn: S.signedIn, sheets: S.byId.size, names: S.names }),
+    state: () => ({ mode: S.mode, signedIn: S.signedIn, sheets: S.byId.size, names: S.names, walkthrough: S.tour.open ? S.tour.step + 1 : 0 }),
+    walkthrough: () => ({ open: S.tour.open, step: S.tour.step + 1, steps: tourSteps().length, heading: (($("#tour-h") || {}).textContent || "") }),
     reads: () => S.reads.map(x => ({ ok: x.ok, id: x.id, status: x.status, answers: x.answers, open: x.open ? x.open.length : 0, reason: x.reason, src: x.src, code: x.rec && x.rec.code })),
     sheet: id => { const e = S.byId.get(id); return e ? { rec: e.rec, spec: specFor(id), mismatch: e.mismatch } : null; },
     ids: (cls, subj, kind) => S.data ? S.data.classes.filter(c => !cls || c.id === cls).flatMap(c => c.sheets.filter(r => (!subj || r.subject === subj) && (!kind || r.kind === kind)).map(r => r.id)) : [],
@@ -524,6 +609,7 @@
     const root = document.createElement("div"); root.id = "app"; document.body.appendChild(root);
     const hello = BRIDGE ? await ask("hello", {}, 8000) : null;
     if (hello) { S.appVersion = hello.app || ""; if (hello.mode === "server" && hello.server) { S.mode = "server"; S.server = hello.server; } }
+    if (!tourSeen(hello)) S.tour = { open: true, step: 0, focus: true };   // the first time DI-ana opens
     if (S.mode === "demo") { useData(DEMO); render(); return; }
     render();
     await loadServer();

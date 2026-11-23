@@ -33,7 +33,8 @@ dist.mkdir(exist_ok=True)
 (dist / "icons").mkdir(exist_ok=True)
 for f in (WEB / "icons").glob("*.png"):
     shutil.copyfile(f, dist / "icons" / f.name)
-manifest = {"name": "DI-ana demo · Odin's sheet scanner", "short_name": "DI-ana", "description": "Reads Odin's paper sheets with the camera. A demo with invented students.",
+manifest = {"name": "DI-ana demo · Diagnostic testing and Intervention automatic analysis", "short_name": "DI-ana",
+            "description": "Reads Odin's paper pre-checks, practice sheets and post-checks with the camera and sends only the answers to Odin. A demo with invented students.",
             "id": "./", "start_url": "./", "scope": "./", "display": "standalone", "orientation": "portrait", "background_color": "#F3F2F6", "theme_color": "#6B3FA0",
             "icons": [{"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
                       {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}]}

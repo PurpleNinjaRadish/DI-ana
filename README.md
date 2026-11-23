@@ -1,16 +1,53 @@
 # DI-ana
 
-DI-ana reads Odin's paper sheets with a phone's camera: the pre-checks, practice 1 and 2, and post-checks that
-[Odin](https://github.com/PurpleNinjaRadish/project-cerabus) (Project Cerberus) prints for each student. Hold the phone
-over a sheet until it beeps, then the next one. DI-ana sends only the answers to the school's Odin server, and Odin
-scores them from its own answer keys.
+**Diagnostic testing and Intervention automatic analysis.** DI-ana reads the paper sheets that
+[Odin](https://github.com/PurpleNinjaRadish/project-cerabus) (Project Cerberus) prints for each student: the pre-check,
+practice 1 and 2, and the post-check. Hold the phone over a sheet until it beeps, then the next one. DI-ana sends only
+the answers to the school's Odin server; Odin scores them with its own answer keys and shows the pre- and post-check
+scores on its Weekly focus and Progress tabs.
 
 **Try the demo** (invented students only): <https://purpleninjaradish.github.io/Odin-2/diana/> (next to Odin's demo), and
 <https://purpleninjaradish.github.io/DI-ana/> once GitHub Pages is turned on here (Settings › Pages › Source: GitHub Actions).
 **The Android app:** [diana-android.apk](https://github.com/PurpleNinjaRadish/DI-ana/raw/android-build/diana-android.apk)
 (the latest build; its emulator check is on the [android-build](https://github.com/PurpleNinjaRadish/DI-ana/tree/android-build) branch).
 
-Version 0.1.0-alpha. It reads sheets with Odin 0.9.5's scanner (see `odin/SOURCE.json`).
+Version 0.1.1-alpha. It reads sheets with Odin 0.9.5's scanner (see `odin/SOURCE.json`).
+
+## Walkthrough
+
+DI-ana shows this walkthrough the first time it opens; the **Walkthrough** button at the top opens it again.
+
+<p><img src="docs/walkthrough/1-walkthrough.png" width="260" alt="DI-ana's walkthrough: what DI-ana does">
+<img src="docs/walkthrough/2-walkthrough-scan.png" width="260" alt="The walkthrough's scanning step"></p>
+
+1. **Print the sheets in Odin.** On Odin's **Practice** tab, under **View, print or save as PDF**, choose **Pre-checks**,
+   **Practice packets** or **Post-checks**, then **Print** (or **Save as PDF**). Print on US Letter at 100% (actual size).
+   Each sheet's number is in the black squares at the top, so DI-ana knows whose sheet it is and which one.
+   *In the demo, use **Save sample sheets as PDF** instead: Odin's own demo numbers its sheets differently.*
+2. **Students fill in the bubbles** with a pencil: one bubble per question, filled in completely, erased cleanly to
+   change an answer. Nobody writes on the four black corner squares or the black squares at the top.
+3. **Scan the stack.** Tap **Scan with the camera** and hold the phone over a sheet so all four black corner squares show.
+   Hold still until it beeps, then put the next sheet down. Any order works; upside down or a little crooked is fine.
+   Tap **Light** if the room is dark. Photos or a scanner's PDF work too: **Choose photos or scans**.
+
+   <img src="docs/walkthrough/3-camera.jpg" width="260" alt="The camera reading a sheet: the four corners are found and the sheet's score shows">
+
+4. **Check what DI-ana asks about.** A light mark, two filled bubbles or an erased answer shows that question's bubbles
+   with A–D buttons: tap what the student meant, or **Blank**. If Odin already has a result for a sheet, DI-ana asks
+   before replacing it.
+
+   <img src="docs/walkthrough/4-check.png" width="320" alt="A sheet with one answer to check: two bubbles filled on question 3, with A, B, C and Blank buttons">
+
+5. **Send to Odin.** Press **Send**: only the answers go, and Odin scores them. DI-ana keeps nothing, so send before
+   you close it. *In the demo this button is **Save**, and nothing leaves the page.*
+
+   <img src="docs/walkthrough/5-sent.png" width="320" alt="Sheets saved in the demo, each with its score">
+
+6. **At school**, in the Android app: type the address teachers use for Odin (it starts with https://) and sign in with
+   Odin's password, on the school network. DI-ana needs Odin 0.9.5 or newer. Use real student information only on the
+   school's Project Cerberus server, with the school's written approval.
+
+The pictures come from the demo (`python3 tools/walkthrough_pictures.py`); every student in them is invented.
 
 ## What it does
 

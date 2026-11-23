@@ -28,7 +28,9 @@ reported() { adb logcat -d -s DianaPage:I | grep -q "DIANA-REPORT $1 "; }
 # 2. The demo: pretend pictures (one with an answer to check), then the camera (the emulator's pretend scene).
 demo_step() {
   adb shell am force-stop "$PKG"
-  adb shell am start -W -n "$ACT" --es diana_url demo --es diana_js64 "$(js "$REPORT setTimeout(() => { rep('hello', window.__diana.state()); document.querySelector('[data-a=pretend]').click();
+  adb shell am start -W -n "$ACT" --es diana_url demo --es diana_js64 "$(js "$REPORT setTimeout(() => { rep('hello', window.__diana.state());
+    const w = window.__diana.walkthrough(); if (w.open) { rep('walkthrough', w); document.querySelector('[data-a=tourdone]').click(); }
+    document.querySelector('[data-a=pretend]').click();
     setTimeout(() => { rep('demo', { state: window.__diana.state(), reads: window.__diana.reads(), bridge: !!window.DianaAndroid }); document.querySelector('[data-a=camera]').click();
       setTimeout(() => rep('camera', window.__diana.camera()), 15000); }, 7000); }, 2500);")"
   sleep 12; shot demo
@@ -55,7 +57,7 @@ adb shell am force-stop "$PKG"
 server_step() {
   adb shell am force-stop "$PKG"
   adb shell am start -W -n "$ACT" --es diana_url "http://localhost:8090/" --es diana_js64 "$(js "$REPORT setTimeout(() => {
-    rep('signin-form', { form: !!document.querySelector('#signin'), demoChip: !!document.querySelector('.chip.demo') });
+    rep('signin-form', { form: !!document.querySelector('#signin'), demoChip: !!document.querySelector('.chip.demo'), walkthrough: window.__diana.walkthrough().open });
     document.querySelector('#pw').value = 'test-pass'; document.querySelector('#signin').requestSubmit();
     setTimeout(() => { const st = window.__diana.state(); const id = (window.__diana.ids() || [])[0]; const read = window.__diana.pretendRead(id);
       rep('server', { state: st, id, read }); setTimeout(() => { document.querySelector('[data-a=send]').click();

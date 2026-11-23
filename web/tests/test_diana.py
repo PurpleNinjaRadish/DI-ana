@@ -39,9 +39,11 @@ threading.Thread(target=srv.serve_forever, daemon=True).start()
 PAGE = f"http://127.0.0.1:{srv.server_address[1]}/index.html"
 
 
-def new_page(b, **kw):
+def new_page(b, toured=True, **kw):
     c = b.new_context(viewport={"width": 412, "height": 900}, accept_downloads=True, **kw)
     p = c.new_page()
+    if toured:   # the walkthrough was seen before: it stays closed (the first test checks it opening)
+        p.add_init_script("try { localStorage.setItem('diana.walkthroughSeen', '1'); } catch (e) {}")
     p.on("pageerror", lambda e: errs.append(str(e)))
     p.route("**/*", lambda r: r.abort() if r.request.url.startswith("http") and "127.0.0.1" not in r.request.url else r.continue_())
     return c, p
@@ -66,8 +68,27 @@ SHOTS = [dict(), dict(tilt=0.12, rot=4), dict(upside=True, rot=-3, shade=0.5), d
 
 with sync_playwright() as pw:
     b = pw.chromium.launch()
-    c, p = new_page(b)
+    c, p = new_page(b, toured=False)
     p.goto(PAGE); p.wait_for_selector("#app h1")
+    # the walkthrough: opens by itself the first time, steps forward and back, and stays closed after Done
+    w = p.evaluate("window.__diana.walkthrough()")
+    check(w["open"] and w["step"] == 1 and w["steps"] == 7 and "DI-ana does" in w["heading"] and "Diagnostic testing and Intervention automatic analysis" in p.inner_text("#tour"),
+          f"the walkthrough opens the first time, with what DI-ana stands for: {w['heading']!r}, {w['steps']} steps")
+    heads = [w["heading"]]
+    for k in range(w["steps"] - 1):
+        p.click("[data-a=tournext]"); heads.append(p.evaluate("window.__diana.walkthrough().heading"))
+    p.keyboard.press("ArrowLeft"); back = p.evaluate("window.__diana.walkthrough().step")
+    p.keyboard.press("ArrowRight")
+    check(heads[1].startswith("1. Print") and heads[3].startswith("3. Scan") and heads[-1] == "At school" and back == 6 and p.locator("[data-a=tourscan]").count() == 1,
+          f"it steps through printing, filling in, scanning, checking, sending and school ({len(heads)} steps; Back and the arrow keys work)")
+    check(p.evaluate("document.activeElement && document.activeElement.id") == "tour-h", "each step's heading gets the focus, for screen readers")
+    p.click("[data-a=tourdone]")
+    p.reload(); p.wait_for_selector("#app h1")
+    check(not p.evaluate("window.__diana.walkthrough().open"), "after Done it doesn't open by itself again")
+    p.click("[data-a=tour]")
+    check(p.evaluate("window.__diana.walkthrough().open"), "the Walkthrough button opens it again")
+    p.keyboard.press("Escape")
+    check(not p.evaluate("window.__diana.walkthrough().open"), "Escape closes it")
     st = p.evaluate("window.__diana.state()")
     check(st["mode"] == "demo" and st["sheets"] > 500, f"the demo opens with Odin's invented school: {st['sheets']} sheets")
     check(p.locator("text=Every student in the demo is invented").count() == 1, "the demo says its students are invented")
