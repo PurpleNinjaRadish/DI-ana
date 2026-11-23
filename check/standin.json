@@ -1,0 +1,13 @@
+{
+ "signins": 1,
+ "refused": 1,
+ "results": [
+  {
+   "id": 100001,
+   "answers": "ABAAAB",
+   "source": "scan",
+   "score": 6,
+   "key": "ABAAAB"
+  }
+ ]
+}

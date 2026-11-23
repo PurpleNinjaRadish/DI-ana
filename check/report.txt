@@ -1,0 +1,8 @@
+DIANA-REPORT hello {"mode":"demo","signedIn":false,"sheets":1000,"names":false,"walkthrough":1,"view":"scan","step":null} (:1)
+DIANA-REPORT walkthrough {"open":true,"step":1,"steps":8,"heading":"What DI-ana does"} (:1)
+DIANA-REPORT pdfjs {"ok":true,"version":"3.11.174"} (:1)
+DIANA-REPORT demo {"state":{"mode":"demo","signedIn":false,"sheets":1000,"names":false,"walkthrough":0,"view":"scan","step":"start"},"reads":[{"ok":true,"id":100285,"status":"ready","answers":"BBBCBC","open":0,"src":"pretend","code":"S-097"},{"ok":true,"id":100281,"status":"ready","answers":"ACACAA","open":0,"src":"pretend","code":"S-096"},{"ok":true,"id":100277,"status":"ready","answers":"AACCAA","open":0,"src":"pretend","code":"S-095"},{"ok":true,"id":100273,"status":"check","answers":"AC*AAC","open":1,"src":"pretend","code":"S-094"},{"ok":true,"id":100269,"status":"ready","answers":"BCBABC","open":0,"src":"pretend","code":"S-091"}],"bridge":true} (:1)
+DIANA-REPORT camera {"on":true,"count":0,"msg":"Hold the phone over a sheet so all four black corner squares show.","last":"","video":[1080,1856]} (:1)
+DIANA-REPORT signin-form {"form":true,"demoChip":false,"walkthrough":false} (:1)
+DIANA-REPORT server {"state":{"mode":"server","signedIn":true,"sheets":268,"names":false,"walkthrough":0,"view":"scan","step":null},"id":100001,"read":true} (:1)
+DIANA-REPORT sent {"reads":[{"ok":true,"id":100001,"status":"sent","answers":"ABAAAB","open":0,"src":"pretend","code":"S-020"}],"notice":"Sent 1 sheet to Odin. Pre- and post-check scores are on Odin's Weekly focus and Progress tabs."} (:1)

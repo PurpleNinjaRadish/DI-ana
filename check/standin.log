@@ -1,0 +1,4 @@
+GET /api/scanner 401
+POST /api/signin 200
+GET /api/scanner 200
+POST /api/sheet/result 200

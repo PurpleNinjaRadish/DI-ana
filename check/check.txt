@@ -1,0 +1,12 @@
+ok   the demo opens in the app with Odin's invented school: {'mode': 'demo', 'signedIn': False, 'sheets': 1000, 'names': False, 'walkthrough': 1, 'view': 'scan', 'step': None}
+ok   the walkthrough opens the first time DI-ana opens: {'open': True, 'step': 1, 'steps': 8, 'heading': 'What DI-ana does'}
+ok   pdf.js, for worksheets' PDFs, loads from inside the app: {'ok': True, 'version': '3.11.174'}
+ok   pretend pictures read in the app: ['ready', 'ready', 'ready', 'check', 'ready']
+ok   Android asked for the camera when the page first wanted it, and Allow was tapped
+ok   the camera opens (the app has the camera, the page gets the picture): {'on': True, 'count': 0, 'msg': 'Hold the phone over a sheet so all four black corner squares show.', 'last': '', 'video': [1080, 1856]}
+ok   with Odin's address, the app asks for Odin's password, not the demo: {'form': True, 'demoChip': False, 'walkthrough': False}
+ok   the app remembers the walkthrough was seen: it doesn't open again
+ok   signed in through the app; the school's sheets loaded; a picture read: {'state': {'mode': 'server', 'signedIn': True, 'sheets': 268, 'names': False, 'walkthrough': 0, 'view': 'scan', 'step': None}, 'id': 100001, 'read': True}
+ok   the answers reached Odin through the app, with the sign-in's cookie: [{'id': 100001, 'answers': 'ABAAAB', 'source': 'scan', 'score': 6, 'key': 'ABAAAB'}]
+ok   the page says it was sent: Sent 1 sheet to Odin. Pre- and post-check scores are on Odin's Weekly focus and Progress tabs.
+ok   the app never crashed
