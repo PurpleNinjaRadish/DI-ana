@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parents[1]
 DEST = HERE / "odin"
 # The engine: making a sheet from its record (sheets*.js, engine.js), drawing it as PDF (pdf.js, sheets_pdf.js) and
 # reading a picture of it (scan.js). Kept in this order: later files use earlier ones.
-ENGINE = ["engine.js", "sheets_math.js", "sheets_reading.js", "sheets_passages.js", "sheets.js", "pdf.js", "sheets_pdf.js", "scan.js"]
+ENGINE = ["engine.js", "sheets_math.js", "sheets_reading.js", "sheets_passages.js", "sheets.js", "pdf.js", "sheets_pdf.js", "scan.js", "ai.js"]
 OTHER = {"demo/school.json": "page-src/demo/school.json"}
 FONTS = "public/fonts"
 

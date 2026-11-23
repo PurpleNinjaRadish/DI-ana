@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Takes the README's walkthrough pictures (docs/walkthrough/*.png) from the demo: the walkthrough, the camera reading a
-sheet (Chromium's pretend camera, playing a picture of a filled-in sample sheet), an answer to check, and sent sheets.
+sheet (Chromium's pretend camera, playing a picture of a filled-in sample sheet), an answer to check, sent sheets, and
+(0.2) making tests and worksheets: a worksheet's PDF counted, questions written by a stand-in AI (web/tests/fake_ai.py)
+for the teacher to check, and an answer key sheet.
 Build first (python3 web/build.py). Needs Playwright, Pillow, numpy and pdftoppm. Every student shown is invented."""
 import glob, os, random, subprocess, sys, tempfile
 from pathlib import Path
@@ -10,6 +12,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "web/tests"))
 from photo import photo, desk, y4m
+import fake_ai
 
 OUT, TMP = ROOT / "docs/walkthrough", Path(tempfile.mkdtemp(prefix="diana-pics-"))
 OUT.mkdir(parents=True, exist_ok=True)
@@ -22,7 +25,7 @@ random.seed(4)
 def page(b, seen=True, **kw):
     c = b.new_context(viewport={"width": 390, "height": 760}, device_scale_factor=2, accept_downloads=True, **kw)
     p = c.new_page()
-    p.route("**/*", lambda r: r.abort() if r.request.url.startswith("http") else r.continue_())
+    p.route("**/*", lambda r: r.abort() if r.request.url.startswith("http") and "127.0.0.1" not in r.request.url else r.continue_())
     if seen: p.add_init_script(SEEN)
     p.goto(PAGE); p.wait_for_selector("#app h1"); p.wait_for_timeout(600)
     return c, p
@@ -67,5 +70,30 @@ with sync_playwright() as pw:
     p.evaluate("window.scrollTo(0, 0)"); p.locator("section.panel").first.screenshot(path=str(OUT / "5-sent.png"))
     im = Image.open(OUT / "5-sent.png"); im.crop((0, 0, im.width, min(im.height, 1250))).save(OUT / "5-sent.png")   # the top: the notice and the first sheets
     c.close(); b.close()
+
+    # 0.2: making tests and worksheets
+    AI = fake_ai.start(8096)
+    b = pw.chromium.launch()
+    wp = b.new_page(); wp.set_content("<html><body style='font-family:Arial;font-size:13pt'><h2>Fractions review</h2><p>Name ________</p>" + "".join(
+        f"<p>{i}. Which fraction is the same as {i}/{i * 2}?</p><p>A. 1/2&nbsp;&nbsp;&nbsp;B. 1/3&nbsp;&nbsp;&nbsp;C. 2/3&nbsp;&nbsp;&nbsp;D. 3/4</p>" for i in range(1, 11)) + "</body></html>")
+    wp.pdf(path=str(TMP / "worksheet.pdf"), format="Letter"); wp.close()
+    c, p = page(b)
+    p.click("[data-a=view][data-v=make]"); p.wait_for_timeout(300)
+    p.screenshot(path=str(OUT / "6-make.png"))
+    p.set_input_files("#mk-file", str(TMP / "worksheet.pdf")); p.wait_for_selector("#mk-n", timeout=60000); p.fill("#mk-title", "Fractions review"); p.wait_for_timeout(300)
+    p.locator("section.panel").first.screenshot(path=str(OUT / "7-worksheet.png"))
+    im = Image.open(OUT / "7-worksheet.png"); im.crop((0, 0, im.width, min(im.height, 1500))).save(OUT / "7-worksheet.png")
+    p.click("[data-a=mknext]"); p.select_option("#mk-cls", "3-112"); p.click("[data-a=mkmake]"); p.wait_for_selector("text=Made:")
+    with p.expect_download() as dl: p.click("[data-a=mkprint]")
+    dl.value.save_as(str(TMP / "set.pdf"))
+    subprocess.run(["pdftoppm", "-r", "60", "-png", "-f", "1", "-l", "1", str(TMP / "set.pdf"), str(TMP / "key")], check=True)
+    Image.open(glob.glob(str(TMP / "key-*.png"))[0]).convert("RGB").save(OUT / "8-key-sheet.png")
+    p.click("[data-a=mknew]"); p.click("[data-a=mkai]"); p.wait_for_selector("#mk-topic")
+    p.click("#ai-details summary"); p.select_option("#ai-provider", "custom"); p.fill("#ai-url", "http://127.0.0.1:8096/v1"); p.fill("#ai-model", "llama3.1:8b"); p.click("[data-a=aisave]")
+    p.select_option("#mk-subj", "math"); p.fill("#mk-topic", "a school store"); p.click("[data-a=mkwrite]"); p.wait_for_selector("fieldset.q", timeout=30000)
+    p.fill("#mk-title", "Adding zero"); p.evaluate("window.scrollTo(0, 0)"); p.wait_for_timeout(200)
+    p.locator("section.panel").first.screenshot(path=str(OUT / "9-ai-review.png"))
+    im = Image.open(OUT / "9-ai-review.png"); im.crop((0, 0, im.width, min(im.height, 1500))).save(OUT / "9-ai-review.png")
+    c.close(); b.close(); AI.shutdown()
 for f in sorted(OUT.iterdir()):
     print(f.name, Image.open(f).size, f.stat().st_size // 1024, "KB")

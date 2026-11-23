@@ -4,11 +4,12 @@ DI-ana (Diagnostic testing and Intervention automatic analysis) is the phone app
 to Odin. Odin is in github.com/PurpleNinjaRadish/project-cerabus (the Project Cerberus server and page).
 
 ## DI-ana and Odin change together
-- `odin/` is a copy of Odin's files (`page-src/src/engine.js`, `sheets*.js`, `pdf.js`, `sheets_pdf.js`, `scan.js`,
+- `odin/` is a copy of Odin's files (`page-src/src/engine.js`, `sheets*.js`, `pdf.js`, `sheets_pdf.js`, `scan.js`, `ai.js`,
   `page-src/demo/school.json`, `public/fonts`). Never edit it here: change Odin, then run
   `python3 tools/sync_odin.py <odin checkout>`, rebuild (`python3 web/build.py`), test, and commit both repositories.
-- Any Odin change to sheet making, sheet layout, the PDF pages, the scanner, `/api/scanner`, `/api/sheet/result` or
-  sign-in also needs DI-ana updated in the same piece of work.
+- Any Odin change to sheet making, sheet layout, the PDF pages, the scanner, the AI (`ai.js`, `/api/ai/...`), sets
+  (`/api/sets...`), `/api/scanner`, `/api/sheet/result` or sign-in also needs DI-ana updated in the same piece of work.
+- `web/vendor/pdfjs` is pdf.js 3.11.174 (Apache 2.0), opened with `isEvalSupported: false`; see its README.txt.
 - `odin/SOURCE.json` records the Odin version and commit the copy came from.
 
 ## Standing rules (from the project owner)
@@ -27,5 +28,6 @@ to Odin. Odin is in github.com/PurpleNinjaRadish/project-cerabus (the Project Ce
   `diana/` folder (purpleninjaradish.github.io/Odin-2/diana/): copy `dist/` there with each DI-ana release.
 
 ## Checks
-- `python3 web/tests/test_diana.py` (add `ODIN_URL=...` with a running Odin 0.9.5+ on a fresh demo database, password test-pass).
+- `python3 web/tests/test_diana.py` (add `ODIN_URL=...` with a running Odin 0.10+ on a fresh demo database, password test-pass).
+  It starts a stand-in AI itself (`web/tests/fake_ai.py`, a copy of Odin's, on ports 8098; the pictures script uses 8096).
 - CI: `.github/workflows/pages.yml` (page tests, then GitHub Pages) and `android.yml` (app build, emulator check, android-build branch).

@@ -11,6 +11,13 @@ const SH_MARKS = [[14, 14], [201.9, 14], [201.9, 265.4], [14, 265.4]];   // cent
 const SH_CODE = { x0: 40, cy: 14, w: 3.6, h: 5, pitch: 4, n: 34 };        // 2 start bits + 24-bit sheet number + 8-bit check
 const SH_BODY = { x0: 14, x1: 201.9, y0: 41, y1: 257.5 };
 const SH_KIND = { pre: "Pre-check", practice: "Practice", post: "Post-check" };
+// 0.10: the answer letters. Odin's own sheets use A to D; a worksheet's answer sheet may have up to five choices.
+const SH_LETTERS = "ABCDE";
+// 0.10: sheets made from a set (kind "set"): a test or practice sheet written with AI, or the answer sheet for a printed
+// worksheet. rec.custom holds what the sheet shows: { set, setKind: "test" | "practice" | "worksheet", title, subject,
+// items: [{ stem, choices: [..] }] and an optional passage { title, text }, or answers: [number of choices per question],
+// keySheet: true for the teacher's answer key }. rec.key holds the answer key, with "?" where it isn't known yet.
+const SH_SET_KIND = { test: "Test", practice: "Practice sheet", worksheet: "Worksheet answers" };
 const SH_PASSAGE_SKILLS = ["LIT", "INF", "AG"];
 const SH_EPOCH = "2026-01-05";   // a Monday; week numbers rotate passages
 
@@ -148,6 +155,7 @@ function shLesson(rec, items) {
   return { title: les.title, skill: name, steps: les.steps, example, also: [], tip: items[0] && items[0].hint };
 }
 function shBuildSheet(rec) {
+  if (rec.kind === "set") return shBuildSetSheet(rec);
   const ck = rec.id + "|" + [rec.code, rec.kind, rec.part, rec.week, rec.skill, rec.band, rec.concepts, rec.spiral, rec.gen].join("|");
   if (shBuildSheet.cache.has(ck)) return shBuildSheet.cache.get(ck);
   const name = shSkillName(rec.subject, rec.skill), slot = rec.kind === "practice" ? "p" + rec.part : rec.kind;
@@ -163,17 +171,54 @@ function shBuildSheet(rec) {
     rec.kind === "practice" && rec.part === 1 ? "Use the hints." : rec.kind === "practice" ? (rec.spiral ? `Try these on your own. The last two review ${reviewName}.` : "Try these on your own.") : "",
     "Fill in one bubble for each question. Use a pencil."].filter(Boolean).join(" ");
   const spec = { id: rec.id, code: rec.code, subject: rec.subject, skill: rec.skill, skillName: name, week: rec.week, kind: rec.kind, part: rec.part || 0, band: rec.band, level: rec.level,
-    title, directions, template, readAloud, passage, items, total: items.length, key: items.map(it => "ABCD"[it.key]).join(""), hints: rec.kind === "practice" && rec.part === 1,
+    title, directions, template, readAloud, passage, items, total: items.length, key: items.map(it => SH_LETTERS[it.key]).join(""), hints: rec.kind === "practice" && rec.part === 1,
     learn: rec.kind === "practice" && rec.part === 1 ? shLesson(rec, items) : null };
   spec.layout = shLayout(spec);
   shBuildSheet.cache.set(ck, spec);
   return spec;
 }
 shBuildSheet.cache = new Map();
+// 0.10: a sheet from a set. Its questions (or, for a worksheet, just the number of choices) come with the record, so the
+// same sheet is drawn again in Odin, in DI-ana and on another computer. Up to 8 questions (6 with a passage) on a question
+// sheet; up to 60 on a worksheet's answer sheet.
+function shBuildSetSheet(rec) {
+  const C = rec.custom || {}, keyStr = String(rec.key || "");
+  const ck = "set|" + rec.id + "|" + rec.code + "|" + keyStr + "|" + shHash(JSON.stringify(C));
+  if (shBuildSheet.cache.has(ck)) return shBuildSheet.cache.get(ck);
+  const kidx = i => { const k = SH_LETTERS.indexOf(keyStr[i] || "?"); return k; };   // -1: not known yet
+  let items, template, passage = null;
+  if (Array.isArray(C.answers)) {
+    items = C.answers.map((n, i) => ({ stem: "", choices: Array.from({ length: Math.max(2, Math.min(5, n | 0)) }, () => ""), key: kidx(i) }));
+    template = "answers";
+  } else {
+    items = (C.items || []).map((it, i) => ({ stem: String(it.stem || ""), choices: (it.choices || []).map(String), key: kidx(i), hint: it.hint || "" }));
+    if (C.passage && C.passage.text) passage = { title: String(C.passage.title || ""), text: String(C.passage.text), poem: false, id: "set" };
+    const young = (rec.band | 0) <= 1;
+    template = passage ? (young ? "passage4" : "passage5") : (young && items.length <= 6 ? "grid6" : "grid8");
+  }
+  const name = String(C.title || "").trim() || "Sheet", what = SH_SET_KIND[C.setKind] || "Sheet";
+  const title = C.keySheet ? `Answer key · ${name}` : C.setKind === "worksheet" ? `Answers · ${name}` : `${what} · ${name}`;
+  const directions = C.keySheet ? "Teacher: fill in the right answer to each question, then scan this sheet with the students' sheets. Keep it away from students."
+    : C.setKind === "worksheet" ? "Answer the worksheet's questions here: fill in one bubble for each question. Use a pencil." : "Fill in one bubble for each question. Use a pencil.";
+  const spec = { id: rec.id, code: rec.code, subject: rec.subject || C.subject || "", skill: rec.skill || "", skillName: name, week: rec.week, kind: "set", part: 0, band: rec.band | 0, level: rec.level,
+    title, directions, template, readAloud: false, passage, items, total: items.length, key: keyStr, keyKnown: items.every(it => it.key >= 0), hints: C.setKind === "practice" && items.some(it => it.hint), learn: null,
+    set: C.set || null, setKind: C.setKind || "", keySheet: !!C.keySheet };
+  spec.layout = shLayout(spec);
+  shBuildSheet.cache.set(ck, spec);
+  return spec;
+}
+// 0.10: a set, as Odin's server sends it, as sheet records: its answer key sheet first, then each student's sheet.
+function shSetRecs(set) {
+  const custom = Object.assign({ set: set.id, setKind: set.kind, title: set.title, subject: set.subject || "" }, set.content || {});
+  const base = { kind: "set", week: set.week, band: set.band | 0, subject: set.subject || "", key: set.key };
+  return [Object.assign({}, base, { id: set.keySheet, code: "", custom: Object.assign({}, custom, { keySheet: true }) })]
+    .concat((set.sheets || []).map(x => Object.assign({}, base, { id: x.id, code: x.code, custom, status: x.status, right: x.right })));
+}
+function shHash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h.toString(36); }
 function shScore(spec, answers) {
   const a = String(answers || ""), byTag = {};
   let right = 0;
-  spec.items.forEach((it, i) => { const ok = a[i] === "ABCD"[it.key]; if (ok) right++; const t = it.review ? "review" : it.tag || "other"; const e = byTag[t] || (byTag[t] = { right: 0, total: 0 }); e.total++; if (ok) e.right++; });
+  spec.items.forEach((it, i) => { const ok = it.key >= 0 && a[i] === SH_LETTERS[it.key]; if (ok) right++; const t = it.review ? "review" : it.tag || "other"; const e = byTag[t] || (byTag[t] = { right: 0, total: 0 }); e.total++; if (ok) e.right++; });
   return { right, total: spec.items.length, byTag };
 }
 
@@ -213,14 +258,25 @@ function shChoiceLayout(choices, x, y, w, pt, r, rowH) {
   if (room(w / n) < longest) cols = n === 4 && room(w / 2) >= longest ? 2 : 1;
   if (cols === 1 && room(w) < longest) lines = 2;
   const rows = Math.ceil(n / cols), cw = w / cols, h = rowH + (lines - 1) * pt * SH_PT * 1.15;
-  const cells = choices.map((c, i) => { const cx = x + (i % cols) * cw, cy = y + Math.floor(i / cols) * h; return { x: cx, y: cy, w: cw, h, bx: cx + r + 1.2, by: cy + h / 2, r, letter: "ABCD"[i], text: c, lines }; });
+  const cells = choices.map((c, i) => { const cx = x + (i % cols) * cw, cy = y + Math.floor(i / cols) * h; return { x: cx, y: cy, w: cw, h, bx: cx + r + 1.2, by: cy + h / 2, r, letter: SH_LETTERS[i], text: c, lines }; });
   return { cells, height: rows * h, cols };
 }
 function shLayout(spec) {
   const L = { template: spec.template, items: [], overflow: [] }, B = SH_BODY, BH = B.y1 - B.y0;
   const T = { grid8: { cols: 2, rows: 4, pt: 11, r: 2.4, rowH: 6.6 }, grid6: { cols: 2, rows: 3, pt: 14, r: 2.9, rowH: 8 },
     passage5: { pt: 10.5, ppt: 10.5, r: 2.3, rowH: 6.2 }, passage4: { pt: 13, ppt: 13, r: 2.9, rowH: 8 } }[spec.template];
-  if (spec.template.startsWith("grid")) {
+  if (spec.template === "answers") {
+    // a worksheet's answer sheet: numbered rows of bubbles in one to three columns
+    const n = spec.items.length, cols = n <= 20 ? 1 : n <= 40 ? 2 : 3, rows = Math.ceil(n / cols), BW = B.x1 - B.x0;
+    const rowH = Math.max(7, Math.min(11, BH / rows)), r = rowH >= 9 ? 2.7 : 2.4, pitch = r * 2 + 3.4, colW = BW / cols;
+    spec.items.forEach((it, i) => {
+      const col = Math.floor(i / rows), row = i % rows, x = B.x0 + col * colW, y = B.y0 + row * rowH, cy = y + rowH / 2;
+      const choices = it.choices.map((c, k) => { const bx = x + 15 + r + k * pitch; return { x: bx - r - 1, y: cy - rowH / 2, w: pitch, h: rowH, bx, by: cy, r, letter: SH_LETTERS[k], text: "", lines: 1 }; });
+      L.items.push({ n: i + 1, x, y, w: colW, h: rowH, pt: 11, lh: rowH, num: { x: x + 9, y: cy }, stem: { x: x, y, w: 0, h: 0, lines: [] }, hint: null, fig: null, choices, ccols: choices.length, row: true });
+    });
+    L.cols = cols; L.rows = rows; L.colW = colW; L.rowH = rowH;
+    if (rows * rowH > BH + 0.5) L.overflow.push("answers");
+  } else if (spec.template.startsWith("grid")) {
     const gap = 5, colW = (B.x1 - B.x0 - gap) / T.cols, rowH = BH / T.rows;
     spec.items.forEach((it, i) => {
       const col = i % T.cols, row = Math.floor(i / T.cols), x = B.x0 + col * (colW + gap), y = B.y0 + row * rowH;
@@ -329,4 +385,4 @@ function shFigLabel(f) {
     grid: `a rectangle of unit squares, ${f.w} by ${f.h}`, rect: `a rectangle ${f.l} ${f.u} by ${f.w} ${f.u}`, clock: "a clock", coins: "coins", bars: "a bar graph of votes", shape: `a ${f.k}`, cubes: `a ${f.la} and a ${f.lb} measured with cubes`,
     linefig: "a figure", angle: "an angle", coord: "a coordinate grid with point A" }[f.t] || "a figure";
 }
-if (typeof module !== "undefined") module.exports = Object.assign(module.exports || {}, { SHEET_GEN, SH_PAGE, SH_MARK, SH_MARKS, SH_CODE, SH_BODY, shPlanFor, shRecordsFor, shBuildSheet, shWeekItems, shScore, shCodeBits, shCodeRead, shCodeCells, shLayout, shFig, shConcepts, shWrap, shPassagesFor });
+if (typeof module !== "undefined") module.exports = Object.assign(module.exports || {}, { SH_LETTERS, SH_SET_KIND, shBuildSetSheet, shSetRecs, shHash, SHEET_GEN, SH_PAGE, SH_MARK, SH_MARKS, SH_CODE, SH_BODY, shPlanFor, shRecordsFor, shBuildSheet, shWeekItems, shScore, shCodeBits, shCodeRead, shCodeCells, shLayout, shFig, shConcepts, shWrap, shPassagesFor });

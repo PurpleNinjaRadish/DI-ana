@@ -42,7 +42,9 @@ import java.util.regex.Pattern;
  * The sign-in's session cookie is kept here, in memory only: it is never written down, and it is gone when DI-ana closes.
  * The password is sent to Odin once and not kept.
  *
- * Messages (JSON): hello, signin {password}, get {path}, post {path, body}, signout, buzz {ms}, printpdf {name, b64}, toured, setup.
+ * Messages (JSON): hello, signin {password}, get {path}, post {path, body}, signout, buzz {ms}, printpdf {name, b64}, toured, setup,
+ * and (0.2, in the demo only) ai {url, headers, body}: one request to the AI service the teacher chose, over HTTPS. At school
+ * the AI goes through Odin (api/ai/chat), which keeps the key.
  * Each gets a reply {t: "reply", id, ...}. When the app leaves the screen the page hears {t: "app", ev: "hidden"}.
  */
 final class DianaBridge implements WebViewCompat.WebMessageListener {
@@ -55,6 +57,9 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
     private final WebView web;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService net = Executors.newSingleThreadExecutor();
+    private final ExecutorService slow = Executors.newSingleThreadExecutor();   // the AI: a model can take a minute or two
+    private static final java.util.Set<String> AI_HEADERS = new java.util.HashSet<>(java.util.Arrays.asList(
+            "content-type", "authorization", "x-api-key", "anthropic-version", "x-goog-api-key"));
     private JavaScriptReplyProxy reply;
     private boolean attached;
     private volatile String cookie;   // Odin's session, in memory only
@@ -91,6 +96,7 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
     void destroy() {
         cookie = null;
         net.shutdownNow();
+        slow.shutdownNow();
         if (attached && WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
             try {
                 WebViewCompat.removeWebMessageListener(web, NAME);
@@ -134,7 +140,7 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
                 final String pw = m.optString("password", "");
                 net.execute(() -> {
                     JSONObject body = o("password", pw);
-                    Answer a = request(target, "POST", "api/signin", body.toString(), true);
+                    Answer a = request(target, "POST", "api/signin", body.toString(), true, 30000);
                     if (a.status == 200) cookie = a.cookie;
                     String err = a.status == 200 ? null : a.status == 0 ? a.error : errorOf(a.body, "Odin answered " + a.status);
                     send(o("t", "reply", "id", id, "ok", a.status == 200 && cookie != null, "status", a.status, "error",
@@ -150,15 +156,31 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
                     send(o("t", "reply", "id", id, "status", 400, "error", "DI-ana asks Odin only for its own information."));
                     break;
                 }
-                net.execute(() -> {
-                    Answer a = request(target, post ? "POST" : "GET", path, post ? (body == null ? "{}" : body.toString()) : null, false);
+                final boolean ai = "api/ai/chat".equals(path);
+                (ai ? slow : net).execute(() -> {
+                    Answer a = request(target, post ? "POST" : "GET", path, post ? (body == null ? "{}" : body.toString()) : null, false, ai ? 190000 : 30000);
+                    send(o("t", "reply", "id", id, "status", a.status, "body", a.body, "error", a.error));
+                });
+                break;
+            }
+            case "ai": {   // the demo's AI (at school, Odin's server calls it)
+                final String url = m.optString("url", "");
+                final JSONObject hs = m.optJSONObject("headers");
+                final String json = m.optString("body", "");
+                Uri u = Uri.parse(url);
+                if (server || !"https".equals(u.getScheme()) || u.getHost() == null || json.length() > 64000) {
+                    send(o("t", "reply", "id", id, "status", 0, "error", server ? "At school, DI-ana uses Odin's AI." : "The AI's address must start with https://."));
+                    break;
+                }
+                slow.execute(() -> {
+                    Answer a = aiRequest(url, hs, json);
                     send(o("t", "reply", "id", id, "status", a.status, "body", a.body, "error", a.error));
                 });
                 break;
             }
             case "signout":
                 if (server && cookie != null) net.execute(() -> {
-                    request(target, "POST", "api/signout", "{}", false);
+                    request(target, "POST", "api/signout", "{}", false, 30000);
                     cookie = null;
                     send(o("t", "reply", "id", id, "ok", true));
                 });
@@ -201,14 +223,14 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
     }
 
     /** One request to Odin (on the network thread). The session cookie goes with it; the answer is read into memory. */
-    private Answer request(String base, String method, String path, String json, boolean signin) {
+    private Answer request(String base, String method, String path, String json, boolean signin, int readMs) {
         Answer a = new Answer();
         HttpURLConnection c = null;
         try {
             c = (HttpURLConnection) new URL(base + path).openConnection();
             c.setInstanceFollowRedirects(false);
             c.setConnectTimeout(10000);
-            c.setReadTimeout(30000);
+            c.setReadTimeout(readMs);
             c.setUseCaches(false);
             c.setRequestMethod(method);
             c.setRequestProperty("Accept", "application/json");
@@ -256,6 +278,55 @@ final class DianaBridge implements WebViewCompat.WebMessageListener {
         } catch (IOException | RuntimeException e) {
             a.status = 0;
             a.error = "Can't reach Odin at " + base + ". Check that this phone is on the school network. (" + e.getClass().getSimpleName() + ")";
+        } finally {
+            if (c != null) c.disconnect();
+        }
+        return a;
+    }
+
+    /** One request to the AI service chosen in the demo: only the headers an AI service needs, and no cookies. */
+    private Answer aiRequest(String url, JSONObject hs, String json) {
+        Answer a = new Answer();
+        HttpURLConnection c = null;
+        try {
+            c = (HttpURLConnection) new URL(url).openConnection();
+            c.setInstanceFollowRedirects(false);
+            c.setConnectTimeout(15000);
+            c.setReadTimeout(190000);
+            c.setUseCaches(false);
+            c.setRequestMethod("POST");
+            c.setRequestProperty("User-Agent", "DIanaAndroid/" + BuildConfig.VERSION_NAME);
+            if (hs != null) {
+                java.util.Iterator<String> it = hs.keys();
+                while (it.hasNext()) {
+                    String k = it.next();
+                    if (AI_HEADERS.contains(k.toLowerCase(java.util.Locale.ROOT))) c.setRequestProperty(k, hs.optString(k, ""));
+                }
+            }
+            byte[] out = json.getBytes(StandardCharsets.UTF_8);
+            c.setDoOutput(true);
+            c.setFixedLengthStreamingMode(out.length);
+            try (OutputStream o = c.getOutputStream()) {
+                o.write(out);
+            }
+            a.status = c.getResponseCode();
+            InputStream in = a.status >= 400 ? c.getErrorStream() : c.getInputStream();
+            if (in != null) {
+                try (InputStream s = in) {
+                    ByteArrayOutputStream buf = new ByteArrayOutputStream();
+                    byte[] chunk = new byte[16384];
+                    int n, total = 0;
+                    while ((n = s.read(chunk)) > 0) {
+                        total += n;
+                        if (total > 2 * 1024 * 1024) throw new IOException("the AI's answer is too large");
+                        buf.write(chunk, 0, n);
+                    }
+                    a.body = buf.toString("UTF-8");
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            a.status = 0;
+            a.error = "Can't reach the AI (" + e.getClass().getSimpleName() + ").";
         } finally {
             if (c != null) c.disconnect();
         }

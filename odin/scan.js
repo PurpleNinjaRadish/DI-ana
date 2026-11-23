@@ -188,7 +188,7 @@ function scReadBubbles(img, H, layout, black, white) {
     // judge each answer against its own other bubbles: a light but clear mark counts; two similar marks do not
     if (top < SC_MIN) { answers.push("-"); flags.push({ item: i, kind: "blank" }); return; }
     if (second >= SC_MIN && second > top * SC_TWO && second > rest * SC_RATIO) { answers.push("*"); flags.push({ item: i, kind: "two" }); return; }
-    answers.push("ABCD"[k1]);
+    answers.push(SH_LETTERS[k1]);
     const clear = top >= SC_RATIO * Math.max(second, 0.04);
     if (top < SC_FILL && !(clear && top >= SC_LIGHT)) flags.push({ item: i, kind: "light" });
     else if (second >= Math.max(SC_LIGHT, top * 0.4)) flags.push({ item: i, kind: "erased" });
@@ -246,7 +246,7 @@ function scSynth(spec, answers, opt = {}) {
     it.choices.forEach((c, k) => {
       disk(c.bx, c.by, c.r, 60, true); rect(c.bx - 0.6, c.by - 0.9, 1.2, 1.8, 190); rect(c.bx + c.r + 2, c.by - 1.2, Math.min(c.w - 2 * c.r - 4, c.text.length * shCharW(it.pt)), 2.4, 170);
       const a = answers[i];
-      if (a === "ABCD"[k] || (a === "*" && k < 2)) disk(c.bx + (R() - 0.5) * 0.6, c.by + (R() - 0.5) * 0.6, c.r * (0.8 + R() * 0.15), opt.light ? 150 : 70 + Math.floor(R() * 40), false);
+      if (a === SH_LETTERS[k] || (a === "*" && k < 2)) disk(c.bx + (R() - 0.5) * 0.6, c.by + (R() - 0.5) * 0.6, c.r * (0.8 + R() * 0.15), opt.light ? 150 : 70 + Math.floor(R() * 40), false);
     });
   });
   // scanner geometry: rotation, scale, offset, then noise

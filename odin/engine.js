@@ -492,7 +492,7 @@ const LIBRARY = {
 
 // ===== Odin 0.3: progress monitoring, weekly focus, interests and content matching =====
 // Plain code, no AI. Every number on screen can be traced to a row in the data.
-const ODIN_VERSION = "0.9.5-alpha";
+const ODIN_VERSION = "0.10.0-alpha";
 const CHECK_PASS = 0.8;   // a post-check at or above 80% means the weekly skill is met
 const CHECK_LOW = 0.6;    // two post-checks in a row under 60% on the same skill: not responding yet
 const YEAR_GROWTH = 1.0;  // a typical year of growth on the grade-level scale

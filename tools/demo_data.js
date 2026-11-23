@@ -27,6 +27,6 @@ const classes = school.classes.map(c => {
       }
     }
   }
-  return { id: c.id, grade: c.grade, teacher: c.teacher, room: c.room, students: c.students.map(s => ({ code: s.code, name: s.name })), sheets };
+  return { id: c.id, grade: c.grade, teacher: c.teacher, room: c.room, students: c.students.map(s => ({ code: s.code, name: s.name })), sheets, sets: [] };
 });
 process.stdout.write(JSON.stringify({ app: "Odin", version: A.ODIN_VERSION, school: school.school, today, demo: true, classes }));

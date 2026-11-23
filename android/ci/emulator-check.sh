@@ -25,10 +25,12 @@ sleep 4; shot setup
 # Play services restarts, and apps using its fonts go with it. A step whose report is missing runs once more.
 reported() { adb logcat -d -s DianaPage:I | grep -q "DIANA-REPORT $1 "; }
 
-# 2. The demo: pretend pictures (one with an answer to check), then the camera (the emulator's pretend scene).
+# 2. The demo: pretend pictures (one with an answer to check), then the camera (the emulator's pretend scene). Also (0.2)
+# pdf.js, which reads worksheets' PDFs, loads from inside the app.
 demo_step() {
   adb shell am force-stop "$PKG"
   adb shell am start -W -n "$ACT" --es diana_url demo --es diana_js64 "$(js "$REPORT setTimeout(() => { rep('hello', window.__diana.state());
+    wsPdfjs().then(l => rep('pdfjs', { ok: !!(l && l.getDocument), version: l && l.version })).catch(e => rep('pdfjs', { ok: false, error: String(e) }));
     const w = window.__diana.walkthrough(); if (w.open) { rep('walkthrough', w); document.querySelector('[data-a=tourdone]').click(); }
     document.querySelector('[data-a=pretend]').click();
     setTimeout(() => { rep('demo', { state: window.__diana.state(), reads: window.__diana.reads(), bridge: !!window.DianaAndroid }); document.querySelector('[data-a=camera]').click();

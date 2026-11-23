@@ -19,7 +19,9 @@ def check(ok, msg):
 h, d, cam = rep.get("hello", {}), rep.get("demo", {}), rep.get("camera", {})
 check(h.get("mode") == "demo" and h.get("sheets", 0) > 500, f"the demo opens in the app with Odin's invented school: {h}")
 w = rep.get("walkthrough", {})
-check(w.get("open") and w.get("step") == 1 and w.get("steps") == 7, f"the walkthrough opens the first time DI-ana opens: {w}")
+check(w.get("open") and w.get("step") == 1 and w.get("steps") == 8, f"the walkthrough opens the first time DI-ana opens: {w}")
+pj = rep.get("pdfjs", {})
+check(pj.get("ok") and pj.get("version") == "3.11.174", f"pdf.js, for worksheets' PDFs, loads from inside the app: {pj}")
 reads = d.get("reads", [])
 check(d.get("bridge") and len(reads) == 5 and all(r["ok"] for r in reads) and sum(r["status"] == "check" for r in reads) == 1, f"pretend pictures read in the app: {[r.get('status') for r in reads]}")
 asked = json.loads((OUT / "camera-asked.json").read_text()).get("asked") if (OUT / "camera-asked.json").exists() else 0
