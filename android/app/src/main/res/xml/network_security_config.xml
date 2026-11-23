@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DI-ana reaches Odin only over HTTPS. Besides the usual certificate authorities, the app trusts a school's own certificate
+     authority that IT has installed on the device (Settings › Security › Encryption & credentials), so a
+     Project Cerberus server with the school's own certificate works. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

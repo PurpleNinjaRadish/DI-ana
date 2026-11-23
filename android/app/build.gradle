@@ -1,0 +1,63 @@
+plugins {
+    id "com.android.application"
+}
+
+// DI-ana's version is the VERSION file at the top of the repository (the page shows it too).
+def dianaVersion = rootProject.file("../VERSION").text.trim()
+// The test key in ../keys signs builds for testing. For the district, sign with the district's own key:
+// set DIANA_KEYSTORE (path), DIANA_KEY_ALIAS and DIANA_KEY_PASS, for example from GitHub secrets.
+def keystore = System.getenv("DIANA_KEYSTORE") ?: "../keys/diana-test.jks"
+def keyPass = System.getenv("DIANA_KEY_PASS") ?: "diana-test-key"
+
+android {
+    namespace "io.github.purpleninjaradish.diana"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "io.github.purpleninjaradish.diana"
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName dianaVersion
+        resValue "string", "app_name", "DI-ana"
+    }
+
+    signingConfigs {
+        diana {
+            storeFile file(keystore)
+            storePassword keyPass
+            keyAlias System.getenv("DIANA_KEY_ALIAS") ?: "diana-test"
+            keyPassword keyPass
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.diana
+        }
+        debug {
+            // Only for the emulator check on GitHub: it may reach a test Odin over plain http on the build machine.
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation "androidx.webkit:webkit:1.12.1"
+}
